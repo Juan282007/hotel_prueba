@@ -1,0 +1,4 @@
+-- The deletes user story uses logical deletion through a procedure.
+-- The targeted reversal must reactivate the affected row when schema, table, and id are known.
+-- Ejemplo:
+-- UPDATE notification.alert SET status = 'ACTIVE', deleted_at = NULL, deleted_by = NULL WHERE id = 1;

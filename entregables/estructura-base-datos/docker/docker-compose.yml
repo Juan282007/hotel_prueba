@@ -1,0 +1,81 @@
+# Local environment for the hotel system database.
+# The watcher runs Liquibase at intervals so it does not depend on
+# Docker Desktop file-watch behavior on Windows.
+name: hotel-system-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hotel-system-db-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hotel_system}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abcd1234}
+    ports:
+      - "${POSTGRES_PORT:-5445}:5432"
+    volumes:
+      - hotel_system_data:/var/lib/postgresql/data
+      - ../scripts:/scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  liquibase-watch:
+    image: liquibase/liquibase:4.25
+    container_name: hotel-system-liquibase-watch
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hotel_system}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abcd1234}
+      WATCH_POLL_SECONDS: ${WATCH_POLL_SECONDS:-60}
+    volumes:
+      - ../:/liquibase/workspace
+    working_dir: /liquibase/workspace
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          echo "--- $$(date): checking changelog every $${WATCH_POLL_SECONDS}s ---"
+          liquibase \
+            --url="jdbc:postgresql://postgres:5432/$${POSTGRES_DB}" \
+            --username="$${POSTGRES_USER}" \
+            --password="$${POSTGRES_PASSWORD}" \
+            --changeLogFile=changelog/changelog-master.yaml \
+            update || true
+          sleep "$${WATCH_POLL_SECONDS}"
+        done
+
+  liquibase-cli:
+    image: liquibase/liquibase:4.25
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hotel_system}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abcd1234}
+    volumes:
+      - ../:/liquibase/workspace
+    working_dir: /liquibase/workspace
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        liquibase \
+          --url="jdbc:postgresql://postgres:5432/$${POSTGRES_DB}" \
+          --username="$${POSTGRES_USER}" \
+          --password="$${POSTGRES_PASSWORD}" \
+          --changeLogFile=changelog/changelog-master.yaml \
+          "$${@}"
+      - liquibase-cli
+    command: ["update"]
+
+volumes:
+  hotel_system_data:

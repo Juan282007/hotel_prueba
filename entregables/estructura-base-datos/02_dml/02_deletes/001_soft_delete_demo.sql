@@ -1,0 +1,2 @@
+-- Logical deletion example. Adjust the ID according to the real need.
+-- CALL security.sp_soft_delete('notification', 'alert', 1, NULL);

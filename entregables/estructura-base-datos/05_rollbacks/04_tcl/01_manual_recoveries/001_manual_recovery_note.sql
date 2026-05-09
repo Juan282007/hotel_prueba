@@ -1,0 +1,2 @@
+-- Manual recoveries must document the previous and next status.
+-- For materialized views, run REFRESH MATERIALIZED VIEW again when needed.

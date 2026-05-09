@@ -1,0 +1,2 @@
+-- TCL blocks do not create permanent objects.
+-- If a transaction fails, PostgreSQL rolls back automatically to the corresponding BEGIN.
